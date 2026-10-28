@@ -1,5 +1,7 @@
 import type { Species } from './species.config.js';
 import { speciesName } from './species.js';
+import type { Stage } from './growth.config.js';
+import { markPresent } from './growth.js';
 
 export interface Viewer {
   userId: string;
@@ -13,7 +15,12 @@ export interface Plant {
   planted_at: string;
   last_seen: string;
   growth: number;
-  stage: 'seed' | 'sprout' | 'growing' | 'bloom';
+  stage: Stage;
+  stage_progress: number;
+  last_watered_at: string | null;
+  dormant: boolean;
+  woke_at: string | null;
+  last_growth_at: string | null;
 }
 
 export interface PlantingResult {
@@ -31,7 +38,7 @@ export function plantViewer(
     if (existing.user_id !== viewer.userId) throw new Error('Plant belongs to another viewer.');
     return {
       planted: false,
-      plant: { ...existing, display_name: viewer.displayName, last_seen: at },
+      plant: markPresent(existing, viewer, Date.parse(at)),
     };
   }
   return {
@@ -44,6 +51,11 @@ export function plantViewer(
       last_seen: at,
       growth: 0,
       stage: 'seed',
+      stage_progress: 0,
+      last_watered_at: null,
+      dormant: false,
+      woke_at: null,
+      last_growth_at: null,
     },
   };
 }

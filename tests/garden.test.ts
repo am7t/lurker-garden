@@ -45,6 +45,7 @@ describe('planting', () => {
       plant: {
         user_id: '42', display_name: 'CozyViewer', species: 'fern',
         growth: 0, stage: 'seed', planted_at: plantedAt, last_seen: plantedAt,
+        stage_progress: 0, last_watered_at: null, dormant: false, woke_at: null, last_growth_at: null,
       },
     });
   });

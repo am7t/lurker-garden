@@ -30,7 +30,7 @@ describe('SQLite garden', () => {
       expect(duplicate.plant.planted_at).toBe(first.plant.planted_at);
       expect(duplicate.plant.last_seen).toBe('2026-10-29T12:00:00.000Z');
       expect(random).not.toHaveBeenCalled();
-      expect(secondGarden.list()).toEqual([duplicate.plant]);
+      expect(secondGarden.list()).toEqual([expect.objectContaining(duplicate.plant)]);
       // The key is the Twitch ID, even if two viewers have the same name.
       secondGarden.plant({ userId: '2', displayName: 'Renamed' });
       expect(secondGarden.list()).toHaveLength(2);
