@@ -2,11 +2,13 @@ import { exchangeCode, getTokenInfo, RefreshingAuthProvider, type AccessToken, t
 import type { Config } from '../config.js';
 import type { TokenStore } from './token-store.js';
 
-export const chatScopes = ['user:read:chat', 'user:write:chat'];
+export const chatScopes = ['user:read:chat', 'user:write:chat', 'moderator:read:chatters'];
 
 export interface TwitchAuth {
   provider: RefreshingAuthProvider;
   readonly userId: string | undefined;
+  readonly needsReauthorization: boolean;
+  readonly missingScopes: readonly string[];
   restore(): Promise<boolean>;
   authorize(code: string): Promise<void>;
   validate(): Promise<void>;
@@ -25,10 +27,13 @@ export function createTwitchAuth(
     redirectUri: config.redirectUri,
   });
   let userId: string | undefined;
+  let missingScopes: string[] = [];
+  let needsReauthorization = true;
 
   function invalidate() {
     const previousUser = userId;
     userId = undefined;
+    needsReauthorization = true;
     if (previousUser) provider.removeUser(previousUser);
     onInvalid();
   }
@@ -38,8 +43,10 @@ export function createTwitchAuth(
       || info.userName?.toLowerCase() !== config.channel) {
       throw new Error('Authorize using the broadcaster account configured in TWITCH_CHANNEL.');
     }
-    if (!chatScopes.every((scope) => info.scopes.includes(scope))) {
-      throw new Error('Both chat scopes are required. Reconnect at /auth/login.');
+    missingScopes = chatScopes.filter((scope) => !info.scopes.includes(scope));
+    if (missingScopes.length) {
+      needsReauthorization = true;
+      throw new Error('Required Twitch scopes are missing. Reconnect at /auth/login.');
     }
     return info.userId;
   }
@@ -66,11 +73,14 @@ export function createTwitchAuth(
     if (userId) provider.removeUser(userId);
     userId = nextUser;
     provider.addUser(nextUser, token);
+    needsReauthorization = false;
   }
 
   return {
     provider,
     get userId() { return userId; },
+    get needsReauthorization() { return needsReauthorization; },
+    get missingScopes() { return [...missingScopes]; },
     invalidate,
     async authorize(code) {
       const token = await exchangeCode(config.clientId, config.clientSecret, code, config.redirectUri);
@@ -80,10 +90,17 @@ export function createTwitchAuth(
       const saved = store.load();
       if (!saved) return false;
       if (saved.clientId !== config.clientId) throw new Error('Saved tokens belong to a different Twitch app.');
+      missingScopes = chatScopes.filter((scope) => !saved.token.scope.includes(scope));
+      if (missingScopes.length) {
+        needsReauthorization = true;
+        warn('Saved Twitch token needs new permissions. Re-authorize at /auth/login for moderator:read:chatters.');
+        return false;
+      }
       userId = saved.userId;
       provider.addUser(saved.userId, saved.token);
       try {
         await this.validate();
+        needsReauthorization = false;
         return true;
       } catch {
         invalidate();

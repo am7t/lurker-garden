@@ -14,3 +14,12 @@ it.each(['', '0', '-1', '1.5', '65536', 'abc'])('rejects invalid port %s', (PORT
 it('rejects a channel URL instead of a login name', () => {
   expect(() => readConfig({ ...env, TWITCH_CHANNEL: 'https://twitch.tv/cozy' })).toThrow('TWITCH_CHANNEL must');
 });
+
+it('defaults to real live growth and validates demo settings', () => {
+  expect(readConfig(env)).toMatchObject({ growthSpeed: 1, devForceLive: false });
+  expect(readConfig({ ...env, GROWTH_SPEED: '60', DEV_FORCE_LIVE: 'true' })).toMatchObject({ growthSpeed: 60, devForceLive: true });
+  for (const GROWTH_SPEED of ['0', '-1', 'NaN', 'Infinity', '10001', '']) {
+    expect(() => readConfig({ ...env, GROWTH_SPEED })).toThrow('GROWTH_SPEED');
+  }
+  expect(() => readConfig({ ...env, DEV_FORCE_LIVE: 'yes' })).toThrow('DEV_FORCE_LIVE');
+});

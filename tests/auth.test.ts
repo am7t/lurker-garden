@@ -10,11 +10,11 @@ vi.mock('@twurple/auth', async (importOriginal) => ({
 }));
 
 const config = {
-  clientId: 'fake-client', clientSecret: 'fake-secret', channel: 'cozy', port: 3000,
+  clientId: 'fake-client', clientSecret: 'fake-secret', channel: 'cozy', port: 3000, growthSpeed: 1, devForceLive: false,
   redirectUri: 'http://localhost:3000/auth/callback',
 };
 const token: AccessToken = {
-  accessToken: 'fake-access', refreshToken: 'fake-refresh', scope: ['user:read:chat', 'user:write:chat'],
+  accessToken: 'fake-access', refreshToken: 'fake-refresh', scope: ['user:read:chat', 'user:write:chat', 'moderator:read:chatters'],
   expiresIn: 3600, obtainmentTimestamp: Date.now(),
 };
 const info = { clientId: 'fake-client', userId: '42', userName: 'cozy', scopes: token.scope } as TokenInfo;
@@ -80,4 +80,19 @@ it('ends a session when saved tokens fail validation', async () => {
   await expect(auth.restore()).rejects.toThrow('Saved Twitch session could not be validated.');
   expect(auth.userId).toBeUndefined();
   expect(invalid).toHaveBeenCalled();
+});
+
+it('keeps the server available and requests reauthorization for old two-scope tokens', async () => {
+  const oldToken = { ...token, scope: ['user:read:chat', 'user:write:chat'] };
+  const { auth, store, warn } = fixture({ clientId: 'fake-client', userId: '42', token: oldToken });
+  expect(await auth.restore()).toBe(false);
+  expect(auth.userId).toBeUndefined();
+  expect(auth.needsReauthorization).toBe(true);
+  expect(auth.missingScopes).toEqual(['moderator:read:chatters']);
+  expect(store.save).not.toHaveBeenCalled();
+  expect(warn).toHaveBeenCalledOnce();
+  expect(getTokenInfo).not.toHaveBeenCalled();
+  await auth.authorize('fake-code');
+  expect(auth.needsReauthorization).toBe(false);
+  expect(auth.missingScopes).toEqual([]);
 });

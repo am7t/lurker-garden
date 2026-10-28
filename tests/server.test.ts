@@ -6,7 +6,7 @@ import { buildApp } from '../src/server/app.js';
 
 const config: Config = {
   clientId: 'test-client', clientSecret: 'test-secret', channel: 'test_channel',
-  port: 3000, redirectUri: 'http://localhost:3000/auth/callback',
+  port: 3000, growthSpeed: 1, devForceLive: false, redirectUri: 'http://localhost:3000/auth/callback',
 };
 const headers = { host: 'localhost:3000' };
 let store: ReturnType<typeof openGardenStore>;
@@ -18,7 +18,7 @@ beforeEach(async () => {
   authorize = vi.fn(async (_code: string) => {});
   start = vi.fn(async () => {});
   store = openGardenStore(':memory:');
-  app = await buildApp({ config, garden: createGarden(store, () => 0), auth: { authorize, userId: undefined }, chat: { start, connected: false } });
+  app = await buildApp({ config, garden: createGarden(store, () => 0), auth: { authorize, userId: undefined, needsReauthorization: true, missingScopes: [] }, chat: { start, connected: false, live: false, actualLive: false } });
 });
 afterEach(async () => { vi.restoreAllMocks(); await app.close(); store.close(); });
 
@@ -43,7 +43,7 @@ it('requests only the user chat scopes, a code, and the registered redirect', as
   const { response, redirect } = await login();
   expect(response.statusCode).toBe(302);
   expect(redirect.origin).toBe('https://id.twitch.tv');
-  expect(redirect.searchParams.get('scope')).toBe('user:read:chat user:write:chat');
+  expect(redirect.searchParams.get('scope')).toBe('user:read:chat user:write:chat moderator:read:chatters');
   expect(redirect.searchParams.get('response_type')).toBe('code');
   expect(redirect.searchParams.get('redirect_uri')).toBe(config.redirectUri);
   expect(String(response.headers['set-cookie'])).toContain('HttpOnly');

@@ -9,8 +9,8 @@ import { createOAuthStateStore } from './oauth-state.js';
 interface AppDependencies {
   config: Config;
   garden: Garden;
-  auth: Pick<TwitchAuth, 'authorize' | 'userId'>;
-  chat: Pick<TwitchChat, 'start' | 'connected'>;
+  auth: Pick<TwitchAuth, 'authorize' | 'userId' | 'needsReauthorization' | 'missingScopes'>;
+  chat: Pick<TwitchChat, 'start' | 'connected' | 'live' | 'actualLive'>;
   logger?: boolean;
 }
 
@@ -40,10 +40,17 @@ export async function buildApp({ config, garden, auth, chat, logger = false }: A
     channel: config.channel,
     authenticated: Boolean(auth.userId),
     chat_connected: chat.connected,
+    reauthorization_required: auth.needsReauthorization,
+    missing_scopes: auth.missingScopes,
+    stream_live: chat.actualLive,
+    growth_live: chat.live,
+    dev_force_live: config.devForceLive,
+    growth_speed: config.growthSpeed,
     login: '/auth/login',
     garden: '/api/garden',
   }));
   app.get('/api/garden', async () => ({ plants: garden.list() }));
+  app.get('/api/garden/stats', async () => garden.stats());
 
   app.get('/auth/login', async (_request, reply) => {
     const state = states.issue();

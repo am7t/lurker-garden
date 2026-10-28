@@ -18,7 +18,7 @@ async function main() {
     () => chat?.stop(),
     (message) => console.warn(message),
   );
-  chat = createTwitchChat(auth, config.channel, garden, console);
+  chat = createTwitchChat(auth, config.channel, garden, console, { forceLive: config.devForceLive, speed: config.growthSpeed });
   const app = await buildApp({ config, garden, auth, chat, logger: true });
   const activeChat = chat;
   let validating = false;
@@ -32,9 +32,17 @@ async function main() {
     }).finally(() => { validating = false; });
   }, 60 * 60_000);
   validationTimer.unref();
+  // Dormancy uses wall time, including while offline or awaiting authorization.
+  garden.maintain();
+  const maintenanceTimer = setInterval(() => {
+    try { garden.maintain(); } catch { app.log.warn('Garden dormancy maintenance failed; retrying in one minute.'); }
+  }, 60_000);
+  maintenanceTimer.unref();
+  if (config.devForceLive) app.log.warn('DEV_FORCE_LIVE is enabled: growth can occur while the stream is offline.');
 
   app.addHook('onClose', async () => {
     clearInterval(validationTimer);
+    clearInterval(maintenanceTimer);
     activeChat.stop();
     store.close();
   });

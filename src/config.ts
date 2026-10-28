@@ -10,6 +10,8 @@ export interface Config {
   channel: string;
   port: number;
   redirectUri: string;
+  growthSpeed: number;
+  devForceLive: boolean;
 }
 
 export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -26,7 +28,15 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error('PORT must be an integer from 1 to 65535.');
   }
+  const growthSpeed = Number(env.GROWTH_SPEED ?? '1');
+  if (!Number.isFinite(growthSpeed) || growthSpeed <= 0 || growthSpeed > 10_000) {
+    throw new Error('GROWTH_SPEED must be greater than 0 and at most 10000.');
+  }
+  const forceLive = env.DEV_FORCE_LIVE ?? 'false';
+  if (forceLive !== 'true' && forceLive !== 'false') throw new Error('DEV_FORCE_LIVE must be true or false.');
   return {
+    growthSpeed,
+    devForceLive: forceLive === 'true',
     clientId: required('TWITCH_CLIENT_ID'),
     clientSecret: required('TWITCH_CLIENT_SECRET'),
     channel,
