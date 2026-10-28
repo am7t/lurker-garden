@@ -1,0 +1,38 @@
+{
+  "name": "lurker-garden",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A persistent Twitch community garden, one lurker at a time.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@fastify/cookie": "11.0.2",
+    "@twurple/api": "^8.2.0",
+    "@twurple/auth": "^8.2.0",
+    "@twurple/eventsub-ws": "^8.2.0",
+    "better-sqlite3": "^12.11.1",
+    "dotenv": "^18.0.9",
+    "fastify": "^5.12.7"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^20.19.43",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3",
+    "vitest": "4.1.12"
+  },
+  "overrides": {
+    "light-my-request": "6.6.0"
+  }
+}
