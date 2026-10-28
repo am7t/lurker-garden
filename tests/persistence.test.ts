@@ -50,3 +50,27 @@ describe('SQLite garden', () => {
     } finally { store.close(); }
   });
 });
+
+it('persists watered and dormant state through a real database reopen', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'garden-growth-test-'));
+  directories.push(dir);
+  const filename = join(dir, 'garden.sqlite');
+  const t = Date.parse('2026-10-28T12:00:00Z');
+  const viewer = { userId: '1', displayName: 'Cozy' };
+  let store = openGardenStore(filename);
+  const first = createGarden(store, () => 0, () => new Date(t).toISOString());
+  first.plant(viewer);
+  first.water(viewer, true, 6);
+  store.close();
+  store = openGardenStore(filename);
+  try {
+    const afterRestart = createGarden(store, () => 0, () => new Date(t + 60_000).toISOString());
+    expect(afterRestart.water(viewer, true)).toMatchObject({ status: 'cooldown', waitMs: 29 * 60_000 });
+    expect(afterRestart.list()[0]).toMatchObject({ stage: 'sprout', growth: 30 });
+    const later = createGarden(store, () => 0, () => new Date(t + 8 * 24 * 60 * 60_000).toISOString());
+    later.maintain();
+    expect(store.list()[0]?.dormant).toBe(true);
+    later.seen(viewer);
+    expect(store.list()[0]).toMatchObject({ dormant: false, growth: 30, woke_at: new Date(t + 8 * 24 * 60 * 60_000).toISOString() });
+  } finally { store.close(); }
+});

@@ -88,3 +88,21 @@ it('rejects a nonlocal Host header', async () => {
   const response = await app.inject({ url: '/api/garden', headers: { host: 'other.example:3000' } });
   expect(response.statusCode).toBe(403);
 });
+
+it('exposes stage progress, dormancy, recent action flags, and complete stage counts', async () => {
+  const garden = createGarden(store, () => 0);
+  const viewer = { userId: '42', displayName: 'Cozy' };
+  garden.plant(viewer);
+  garden.water(viewer, true, 6);
+  const response = await app.inject({ url: '/api/garden', headers });
+  expect(response.json().plants[0]).toMatchObject({
+    stage: 'sprout', stage_progress: 0, growth: 30, dormant: false,
+    recently_watered: true, recently_woke: false,
+  });
+  expect(typeof response.json().plants[0].last_watered_at).toBe('string');
+  const stats = await app.inject({ url: '/api/garden/stats', headers });
+  expect(stats.statusCode).toBe(200);
+  expect(stats.json()).toEqual({ total: 1, by_stage: { seed: 0, sprout: 1, leafy: 0, budding: 0, bloom: 0 }, dormant: 0 });
+  const status = await app.inject({ url: '/', headers });
+  expect(status.json()).toMatchObject({ reauthorization_required: true, growth_live: false, dev_force_live: false });
+});

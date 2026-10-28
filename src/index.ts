@@ -48,7 +48,8 @@ async function main() {
   });
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.once(signal, () => {
-      void app.close().catch(() => { process.exitCode = 1; });
+      // Twurple may retain network handles after stop; exit after local cleanup.
+      void app.close().then(() => process.exit(0), () => process.exit(1));
     });
   }
   try {
